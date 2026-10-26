@@ -1,83 +1,51 @@
-import React, { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import React from 'react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import RegistrationForm from '../src/components/RegistrationForm';
 
 describe('Suite 3: Componente RegistrationForm', () => {
-  let container = null;
-  let root = null;
-
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    root = createRoot(container);
-  });
-
   afterEach(() => {
-    act(() => {
-      root.unmount();
-    });
-    container.remove();
-    container = null;
+    cleanup();
   });
 
-  it('CP-REG-01: Renderizado de todos los inputs requeridos', () => {
-    act(() => {
-      root.render(<RegistrationForm show={true} />);
-    });
-    const inputs = container.querySelectorAll('input');
-    expect(inputs.length).toBeGreaterThanOrEqual(0);
+  it('CP-REG-01: Bloqueo de envío y marcado de error visual cuando existen campos obligatorios vacíos', async () => {
+    render(<RegistrationForm show={true} handleClose={() => {}} onRegistroExitoso={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }));
+    expect(await screen.findByText(/Todos los campos son obligatorios/i)).toBeTruthy();
   });
 
-  it('CP-REG-02: Actualización sincrónica del estado ante eventos onChange en los inputs', () => {
-    act(() => {
-      root.render(<RegistrationForm show={true} />);
-    });
-    const input = container.querySelector('input[type="text"]') || container.querySelector('input');
-    if (input) {
-        act(() => {
-            input.value = 'Nuevo Valor';
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-        expect(input.value).toBe('Nuevo Valor');
-    } else {
-        expect(true).toBeTrue();
-    }
+  it('CP-REG-02: Rechazo de contraseñas con longitud inferior al mínimo permitido', async () => {
+    render(<RegistrationForm show={true} handleClose={() => {}} onRegistroExitoso={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/Ej.: Juan Pérez/i), { target: { value: 'Juan' } });
+    fireEvent.change(screen.getByPlaceholderText(/ejemplo@correo/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByPlaceholderText(/Ej.: 9/i), { target: { value: '987654321' } });
+    fireEvent.change(screen.getByPlaceholderText(/Mínimo 6 caracteres/i), { target: { value: '123' } });
+    fireEvent.change(screen.getByPlaceholderText(/Repite tu contraseña/i), { target: { value: '123' } });
+    
+    fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }));
+    expect(await screen.findByText(/La contraseña debe tener al menos 6 caracteres/i)).toBeTruthy();
   });
 
-  it('CP-REG-03: Bloqueo de envío y marcado de error visual cuando existen campos obligatorios vacíos', () => {
-    act(() => {
-      root.render(<RegistrationForm show={true} />);
-    });
-    const form = container.querySelector('form');
-    if(form) {
-        act(() => {
-            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-        });
-    }
-    expect(true).toBeTrue();
+it('CP-REG-03: Rechazo por disparidad en la confirmación de la contraseña', async () => {
+    render(<RegistrationForm show={true} handleClose={() => {}} onRegistroExitoso={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/Ej.: Juan Pérez/i), { target: { value: 'Juan' } });
+    fireEvent.change(screen.getByPlaceholderText(/ejemplo@correo/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByPlaceholderText(/Ej.: 9/i), { target: { value: '987654321' } });
+    fireEvent.change(screen.getByPlaceholderText(/Mínimo 6 caracteres/i), { target: { value: 'secreto1' } });
+    fireEvent.change(screen.getByPlaceholderText(/Repite tu contraseña/i), { target: { value: 'secreto2' } });
+    
+    fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }));
+    expect(await screen.findByText(/Las contraseñas no coinciden/i)).toBeTruthy();
   });
 
-  it('CP-REG-04: Validación de formato de correo electrónico mediante expresión regular', () => {
-    act(() => {
-      root.render(<RegistrationForm show={true} />);
-    });
-    const emailInput = container.querySelector('input[type="email"]');
-    if(emailInput) {
-        act(() => {
-            emailInput.value = 'correo_invalido';
-            emailInput.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-        expect(emailInput.value).toBe('correo_invalido');
-    } else {
-        expect(true).toBeTrue();
-    }
-  });
-
-  it('CP-REG-05: Ejecución exitosa de la función onSubmit con payload sanitizado ante datos válidos', () => {
-    const onSubmitSpy = jasmine.createSpy('onSubmit');
-    act(() => {
-      root.render(<RegistrationForm show={true} onSubmit={onSubmitSpy} />);
-    });
-    expect(onSubmitSpy).toBeDefined();
+  it('CP-REG-04: Exigencia de aceptación de los términos y condiciones', async () => {
+    render(<RegistrationForm show={true} handleClose={() => {}} onRegistroExitoso={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/Ej.: Juan Pérez/i), { target: { value: 'Juan' } });
+    fireEvent.change(screen.getByPlaceholderText(/ejemplo@correo/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByPlaceholderText(/Ej.: 9/i), { target: { value: '987654321' } });
+    fireEvent.change(screen.getByPlaceholderText(/Mínimo 6 caracteres/i), { target: { value: 'secreto' } });
+    fireEvent.change(screen.getByPlaceholderText(/Repite tu contraseña/i), { target: { value: 'secreto' } });
+    
+    fireEvent.click(screen.getByRole('button', { name: /Crear cuenta/i }));
+    expect(await screen.findByText(/Debes aceptar los términos y condiciones/i)).toBeTruthy();
   });
 });

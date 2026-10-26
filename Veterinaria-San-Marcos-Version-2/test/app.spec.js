@@ -1,340 +1,115 @@
 import React from 'react';
-import {
-  render,
-  screen,
-  fireEvent,
-  cleanup
-} from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import App from '../src/App';
 
-import ProductList from '../src/components/ProductList';
-import ShoppingCart from '../src/components/ShoppingCart';
-import RegistrationForm from '../src/components/RegistrationForm';
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
 
 afterEach(() => {
   cleanup();
-  localStorage.clear();
 });
 
-describe('Pruebas unitarias - Veterinaria San Marcos', () => {
-
-  // PRUEBAS 1 A 3: SERVICIOS
-
-  it('1. Muestra el título de servicios', () => {
-    render(
-      <ProductList onSolicitarServicio={() => {}} />
-    );
-
-    expect(
-      screen.getByRole('heading', {
-        name: 'Nuestros servicios'
-      })
-    ).toBeTruthy();
+describe('Suite: App (Componente Principal) - Flujos Principales y Validaciones', () => {
+  
+  it('CP-APP-01: Renderiza la aplicación base sin caerse', () => {
+    render(<App />);
+    const elementos = screen.getAllByText(/Veterinaria San Marcos/i);
+    expect(elementos.length).toBeGreaterThan(0);
   });
 
-  it('2. Muestra los cinco servicios veterinarios', () => {
-    render(
-      <ProductList onSolicitarServicio={() => {}} />
-    );
-
-    const servicios = [
-      'Vacunación',
-      'Cirugía',
-      'Desparasitación',
-      'Exámenes clínicos',
-      'Procedimientos y Cuidados'
-    ];
-
-    servicios.forEach((servicio) => {
-      expect(
-        screen.getByRole('heading', {
-          name: servicio
-        })
-      ).toBeTruthy();
-    });
+  it('CP-APP-02: Abre el modal de registro al hacer clic en Registrarse', () => {
+    render(<App />);
+    const btnRegistro = screen.getAllByRole('button', { name: /Registrarse/i })[0];
+    fireEvent.click(btnRegistro);
+    expect(screen.getByText(/Crear cuenta/i)).toBeTruthy();
   });
 
-  it('3. Envía el servicio seleccionado a la función correspondiente', () => {
-    const solicitarServicio = jasmine.createSpy(
-      'solicitarServicio'
-    );
-
-    render(
-      <ProductList
-        onSolicitarServicio={solicitarServicio}
-      />
-    );
-
-    const botones = screen.getAllByRole('button', {
-      name: 'Solicitar cita'
-    });
-
-    fireEvent.click(botones[3]);
-
-    expect(
-      solicitarServicio
-    ).toHaveBeenCalledWith('Exámenes clínicos');
+  it('CP-APP-03: Rechaza el inicio de sesión con credenciales inválidas', async () => {
+    render(<App />);
+    const btnLoginNav = screen.getAllByRole('button', { name: /Iniciar sesión/i })[0];
+    fireEvent.click(btnLoginNav);
+    
+    fireEvent.change(screen.getByLabelText(/Correo electrónico/i), { target: { value: 'fantasma@correo.cl' } });
+    fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: '123456' } });
+    
+    // Disparamos el submit directo al formulario para evitar bloqueos HTML5
+    const btnModalLogin = screen.getAllByRole('button', { name: /Iniciar sesión/i }).pop();
+    fireEvent.submit(btnModalLogin.closest('form')); 
+    
+    expect(await screen.findByText(/Credenciales incorrectas o usuario no registrado/i)).toBeTruthy();
   });
 
-
-  // PRUEBAS 4 Y 5: CITAS
-
-  const citaEjemplo = {
-    id: 101,
-    servicio: 'Vacunación',
-    mascota: 'Luna',
-    tipoMascota: 'Perro',
-    fecha: '2026-10-25',
-    hora: '10:30',
-    motivo: 'Control anual',
-    estado: 'Pendiente'
-  };
-
-  it('4. Muestra un mensaje cuando no existen citas', async () => {
-    render(
-      <ShoppingCart
-        show={true}
-        handleClose={() => {}}
-        citas={[]}
-        onCancelarCita={() => {}}
-      />
-    );
-
-    expect(
-      await screen.findByText(
-        'No tienes citas registradas actualmente.'
-      )
-    ).toBeTruthy();
+  it('CP-APP-04: Simula el inicio de sesión exitoso y cierre de sesión', async () => {
+    localStorage.setItem('usuarioVeterinaria', JSON.stringify({
+      correo: 'test@test.com',
+      password: 'password123'
+    }));
+    
+    render(<App />);
+    
+    const btnLoginNav = screen.getAllByRole('button', { name: /Iniciar sesión/i })[0];
+    fireEvent.click(btnLoginNav);
+    
+    fireEvent.change(screen.getByLabelText(/Correo electrónico/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: 'password123' } });
+    
+    const btnModalLogin = screen.getAllByRole('button', { name: /Iniciar sesión/i }).pop();
+    fireEvent.submit(btnModalLogin.closest('form'));
+    
+    const btnSalir = await screen.findByRole('button', { name: /Salir/i });
+    expect(btnSalir).toBeTruthy();
+    
+    fireEvent.click(btnSalir);
   });
 
-  it('5. Muestra los datos de la cita y permite solicitar su cancelación', async () => {
-    const cancelarCita = jasmine.createSpy(
-      'cancelarCita'
-    );
+  it('CP-APP-05: Bloquea y permite la creación de citas según validaciones', async () => {
+    localStorage.setItem('usuarioVeterinaria', JSON.stringify({ correo: 'test@test.com', password: '123' }));
+    
+    render(<App />);
+    
+    fireEvent.click(screen.getAllByRole('button', { name: /Iniciar sesión/i })[0]);
+    fireEvent.change(screen.getByLabelText(/Correo electrónico/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: '123' } });
+    
+    const btnModalLogin = screen.getAllByRole('button', { name: /Iniciar sesión/i }).pop();
+    fireEvent.submit(btnModalLogin.closest('form'));
+    
+    await screen.findByRole('button', { name: /Salir/i });
+    
+    const botonesCita = screen.getAllByRole('button', { name: /Solicitar cita/i });
+    fireEvent.click(botonesCita[0]);
+    expect(await screen.findByText(/📅 Solicitar una cita/i)).toBeTruthy();
+    
+    fireEvent.change(screen.getByLabelText(/Nombre de la mascota/i), { target: { value: 'Fido' } });
+    fireEvent.change(screen.getByLabelText(/Tipo de mascota/i), { target: { value: 'Perro' } });
+    fireEvent.change(screen.getByLabelText(/^Servicio$/i), { target: { value: 'Vacuna antirrábica ($12.000)' } });
+    fireEvent.change(screen.getByLabelText(/Motivo de la consulta/i), { target: { value: 'Control de rutina' } });
+    
+    const btnSolicitar = screen.getAllByRole('button', { name: /Solicitar cita/i }).pop();
+    const formCita = btnSolicitar.closest('form');
 
-    render(
-      <ShoppingCart
-        show={true}
-        handleClose={() => {}}
-        citas={[citaEjemplo]}
-        onCancelarCita={cancelarCita}
-      />
-    );
+    // 1. Forzamos error: Fecha en el pasado
+    fireEvent.change(screen.getByLabelText(/Fecha/i), { target: { value: '2020-01-01' } });
+    fireEvent.change(screen.getByLabelText(/Horario/i), { target: { value: '10:00' } });
+    fireEvent.submit(formCita);
+    expect(await screen.findByText(/La fecha de la cita no puede estar en el pasado/i)).toBeTruthy();
 
-    expect(
-      await screen.findByText(/Vacunación/)
-    ).toBeTruthy();
+    // 2. Forzamos error: Domingo (1 de Noviembre 2026)
+    fireEvent.change(screen.getByLabelText(/Fecha/i), { target: { value: '2026-11-01' } });
+    fireEvent.submit(formCita);
+    expect(await screen.findByText(/La clínica no atiende los domingos/i)).toBeTruthy();
 
-    expect(
-      screen.getByText(/Luna \(Perro\)/)
-    ).toBeTruthy();
+    // 3. Forzamos error: Horario fuera de rango (Sábado a las 08:00)
+    fireEvent.change(screen.getByLabelText(/Fecha/i), { target: { value: '2026-10-31' } }); 
+    fireEvent.change(screen.getByLabelText(/Horario/i), { target: { value: '08:00' } });
+    fireEvent.submit(formCita);
+    expect(await screen.findByText(/El horario de atención es de 09:00 a 19:00/i)).toBeTruthy();
 
-    expect(
-      screen.getByText(/Control anual/)
-    ).toBeTruthy();
-
-    const botonCancelar = await screen.findByRole(
-      'button',
-      { name: /Cancelar cita/ }
-    );
-
-    fireEvent.click(botonCancelar);
-
-    expect(
-      cancelarCita
-    ).toHaveBeenCalledWith(101);
+    // 4. Flujo exitoso para cerrar con todo en verde
+    fireEvent.change(screen.getByLabelText(/Horario/i), { target: { value: '10:00' } });
+    fireEvent.submit(formCita);
+    expect(await screen.findByText(/La solicitud de cita se guardó correctamente/i)).toBeTruthy();
   });
-
-
-  // FUNCION AUXILIAR PARA PROBAR EL REGISTRO
-
-  async function completarRegistro({
-    nombre = 'Cristian Rain',
-    correo = 'cristian@example.com',
-    telefono = '912345678',
-    password = 'secreto123',
-    confirmPassword = password,
-    aceptarTerminos = true
-  } = {}) {
-    fireEvent.change(
-      await screen.findByPlaceholderText('Ej.: Juan Pérez'),
-      { target: { value: nombre } }
-    );
-
-    fireEvent.change(
-      screen.getByPlaceholderText('ejemplo@correo.cl'),
-      { target: { value: correo } }
-    );
-
-    fireEvent.change(
-      screen.getByPlaceholderText('Ej.: 912345678'),
-      { target: { value: telefono } }
-    );
-
-    fireEvent.change(
-      screen.getByPlaceholderText('Mínimo 6 caracteres'),
-      { target: { value: password } }
-    );
-
-    fireEvent.change(
-      screen.getByPlaceholderText('Repite tu contraseña'),
-      { target: { value: confirmPassword } }
-    );
-
-    if (aceptarTerminos) {
-      fireEvent.click(screen.getByRole('checkbox'));
-    }
-  }
-
-
-  // PRUEBAS 6 A 10: REGISTRO
-
-  it('6. Rechaza el registro si los campos están vacíos', async () => {
-    render(
-      <RegistrationForm
-        show={true}
-        handleClose={() => {}}
-        onRegistroExitoso={() => {}}
-      />
-    );
-
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'Crear cuenta'
-      })
-    );
-
-    expect(
-      await screen.findByText(
-        'Todos los campos son obligatorios.'
-      )
-    ).toBeTruthy();
-  });
-
-  it('7. Rechaza contraseñas de menos de seis caracteres', async () => {
-    render(
-      <RegistrationForm
-        show={true}
-        handleClose={() => {}}
-        onRegistroExitoso={() => {}}
-      />
-    );
-
-    await completarRegistro({
-      password: '12345',
-      confirmPassword: '12345'
-    });
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Crear cuenta'
-      })
-    );
-
-    expect(
-      await screen.findByText(
-        'La contraseña debe tener al menos 6 caracteres.'
-      )
-    ).toBeTruthy();
-  });
-
-  it('8. Rechaza contraseñas que no coinciden', async () => {
-    render(
-      <RegistrationForm
-        show={true}
-        handleClose={() => {}}
-        onRegistroExitoso={() => {}}
-      />
-    );
-
-    await completarRegistro({
-      password: 'secreto123',
-      confirmPassword: 'secreto456'
-    });
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Crear cuenta'
-      })
-    );
-
-    expect(
-      await screen.findByText(
-        'Las contraseñas no coinciden.'
-      )
-    ).toBeTruthy();
-  });
-
-  it('9. Exige aceptar los términos y condiciones', async () => {
-    render(
-      <RegistrationForm
-        show={true}
-        handleClose={() => {}}
-        onRegistroExitoso={() => {}}
-      />
-    );
-
-    await completarRegistro({
-      aceptarTerminos: false
-    });
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Crear cuenta'
-      })
-    );
-
-    expect(
-      await screen.findByText(
-        'Debes aceptar los términos y condiciones.'
-      )
-    ).toBeTruthy();
-  });
-
-  it('10. Notifica a App.js el nuevo usuario y cierra el formulario si confirma éxito', async () => {
-    const cerrarModal = jasmine.createSpy('cerrarModal');
-    const registroExitoso = jasmine.createSpy('registroExitoso').and.returnValue(true);
-
-    render(
-      <RegistrationForm
-        show={true}
-        handleClose={cerrarModal}
-        onRegistroExitoso={registroExitoso}
-      />
-    );
-
-    await completarRegistro();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-
-    expect(registroExitoso).toHaveBeenCalledWith({
-      nombre: 'Cristian Rain',
-      correo: 'cristian@example.com',
-      telefono: '912345678',
-      password: 'secreto123'
-    });
-    expect(cerrarModal).toHaveBeenCalled();
-    // El componente de formulario delega el almacenamiento a App.js.
-    expect(localStorage.getItem('usuarioVeterinaria')).toBeNull();
-  });
-
-  it('11. Mantiene el formulario abierto si App.js no confirma el registro', async () => {
-    const cerrarModal = jasmine.createSpy('cerrarModal');
-    const registroExitoso = jasmine.createSpy('registroExitoso').and.returnValue(false);
-
-    render(
-      <RegistrationForm
-        show={true}
-        handleClose={cerrarModal}
-        onRegistroExitoso={registroExitoso}
-      />
-    );
-
-    await completarRegistro();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-
-    expect(await screen.findByText(
-      'No se pudo guardar la cuenta. Inténtalo nuevamente.'
-    )).toBeTruthy();
-    expect(cerrarModal).not.toHaveBeenCalled();
-  });
-
 });

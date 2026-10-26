@@ -21,12 +21,13 @@
 | 1.0 | 20-10-2026 | Equipo de Desarrollo | Ejecución inicial del test runner Karma y suite base. | 
 | 2.0 | 22-10-2026 | Equipo de Desarrollo | Incorporación de suites Jasmine para los 4 componentes principales y consolidación de métricas de cobertura Istanbul. | 
 | 2.1 | 25-10-2026 | Equipo de Desarrollo | Actualización de métricas reales según reporte HTML de Istanbul y total de 32 pruebas. | 
+| 3.0 | 26-10-2026 | Equipo de Desarrollo | Corrección de suite ShoppingCart (`onRemoveItem` y cálculo de totales). Integración y configuración de ChromeHeadless para ejecución CI/CD en servidor AWS EC2 (Ubuntu). |
 
 ### Trazabilidad con la Especificación de Requisitos de Software (ERS)
 
 Este informe certifica el cumplimiento y validación experimental del siguiente requisito:
 
-* **RNF-08 (Calidad de Código / QA):** *"Los* componentes críticos del frontend deben contar con cobertura *de pruebas unitarias implementadas bajo el marco de trabajo Jasmine y el ejecutor Karma."*
+* **RNF-08 (Calidad de Código / QA):** *"Los componentes críticos del frontend deben contar con cobertura de pruebas unitarias implementadas bajo el marco de trabajo Jasmine y el ejecutor Karma."*
 
   * **Estado en ERS:** **Verificado (32 pruebas ejecutadas, 0 fallidas).**
 
@@ -42,17 +43,17 @@ Para satisfacer los requerimientos de la pauta respecto a la integración de her
 
 * **Test Runner:** **Karma** (v6.x). Ejecutor de pruebas en navegadores reales o emulados headless.
 
-* **Motor de Ejecución:** **ChromeHeadless**. Permite la ejecución automatizada de pruebas sin levantar entorno gráfico, idóneo para entornos de integración continua (CI/CD) o servidores Linux (Ubuntu/AWS EC2 según **RNF-10**).
+* **Motor de Ejecución:** **ChromeHeadless**. Permite la ejecución automatizada de pruebas sin levantar entorno gráfico, idóneo para entornos de integración continua (CI/CD) o servidores Linux. *(Nota de despliegue: Para la ejecución en la instancia AWS EC2 con Ubuntu, se provisionó `chromium-browser` y se configuró la variable de entorno `CHROME_BIN=/usr/bin/chromium-browser` para permitir la integración continua sin interfaz gráfica).*
 
 * **Preprocesador y Empaquetador:** **Webpack + Babel Loader**. Transpila sintaxis JSX y ES6+ al estándar ejecutable en el navegador.
 
-* Motor **de Cobertura:** **Karma-Coverage / Istanbul Reporter**. Instrumenta el código fuente para auditar cada instrucción, rama, función y línea ejecutada.
+* **Motor de Cobertura:** **Karma-Coverage / Istanbul Reporter**. Instrumenta el código fuente para auditar cada instrucción, rama, función y línea ejecutada.
 
 ### 2.2 Configuración del Archivo `karma.conf.js`
 
 El entorno se encuentra parametrizado para procesar las especificaciones y recolectar las evidencias de la siguiente manera:
 
-```
+```javascript
 module.exports = function (config) {
   config.set({
     basePath: '',
@@ -101,7 +102,6 @@ module.exports = function (config) {
     concurrency: Infinity
   });
 };
-
 ```
 
 ## 3. Estrategia de Pruebas y Uso de Mocks
@@ -112,7 +112,7 @@ De acuerdo con el indicador **IE2.3.1**, la estrategia de pruebas aborda tanto l
 
 Para garantizar que las pruebas unitarias evalúen componentes de forma aislada e independiente:
 
-1. Mock **de Propiedades y Funciones Callback (Spies):** Se emplearon espías de Jasmine (`jasmine.createSpy('callback')`) para interceptar eventos como agregar servicios, enviar formularios o abrir/cerrar modales sin depender de componentes padres.
+1. **Mock de Propiedades y Funciones Callback (Spies):** Se emplearon espías de Jasmine (`jasmine.createSpy('callback')`) para interceptar eventos como agregar servicios, enviar formularios o abrir/cerrar modales sin depender de componentes padres.
 
 2. **Mock de Almacenamiento Local (`localStorage`):** Se interceptaron las llamadas a `localStorage.getItem` y `localStorage.setItem` para simular la persistencia de usuarios y citas médicas en memoria volatil durante la prueba.
 
@@ -202,25 +202,23 @@ Para reproducir y auditar estos resultados de manera local o en una sesión de e
 
 1. **Instalación de Dependencias:**
 
-   ```
+   ```bash
    npm install
-   
    ```
 
-2. **Ejecución en Consola (Modo Continuo / Desarrollo):**
+2. **Ejecución en Consola (Entorno Local Windows/Mac):**
 
-   ```
+   ```bash
    npm test
-   
    ```
 
-3. **Ejecución Única con Generación de Reporte de Cobertura:**
+3. **Ejecución en Servidor Linux Sin Interfaz Gráfica (AWS EC2 Ubuntu):**
+   *Asegurarse de tener Chromium instalado y asignar la ruta del ejecutable antes de correr la prueba:*
 
-   ```
+   ```bash
+   export CHROME_BIN=/usr/bin/chromium-browser
    npm run test:coverage
-   # O directamente:
-   npx karma start karma.conf.js --single-run
-   
    ```
 
-4. **Visualización del Reporte Gráfico:** \*
+4. **Visualización del Reporte Gráfico:** 
+   Abrir el archivo `coverage/html/index.html` generado automáticamente en la carpeta del proyecto a través de cualquier navegador web.

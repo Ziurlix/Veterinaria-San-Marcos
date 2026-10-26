@@ -18,9 +18,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "karma start karma.conf.js --single-run",
+    "test:coverage": "npx karma start karma.conf.js --single-run",
     "test:karma": "karma start karma.conf.js --single-run",
     "test:watch": "karma start karma.conf.js",
     "eject": "react-scripts eject"
+
   },
   "eslintConfig": {
     "extends": [

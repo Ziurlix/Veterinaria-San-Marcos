@@ -39,7 +39,7 @@ export default function RegistrationForm({ show, handleClose, onRegistroExitoso 
   return (
     <Modal show={show} onHide={handleClose} centered>
       <Modal.Header closeButton style={{ backgroundColor: '#e8f5f1' }}>
-        <Modal.Title style={{ color: '#123e32', fontWeight: 700 }}>🐾 Crear Cuenta</Modal.Title>
+        <Modal.Title style={{ color: '#123e32', fontWeight: 700 }}>🐾 Registrarse </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {error && <Alert variant="danger">{error}</Alert>}

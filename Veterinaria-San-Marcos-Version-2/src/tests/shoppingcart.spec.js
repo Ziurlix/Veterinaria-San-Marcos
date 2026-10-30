@@ -1,10 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import ShoppingCart from '../components/ShoppingCart';
 
 describe('Componente ShoppingCart', () => {
   it('debería renderizar correctamente el componente', () => {
-    const { container } = render(
+    render(
       <ShoppingCart
         show={true}
         handleClose={jest.fn()}
@@ -12,11 +13,12 @@ describe('Componente ShoppingCart', () => {
         onCancelarCita={jest.fn()}
       />
     );
-    expect(container).not.toBeEmptyDOMElement();
+
+    expect(screen.getByText(/Mis Citas Agendadas/i)).toBeInTheDocument();
   });
 
   it('debería contener una estructura válida', () => {
-    const { container } = render(
+    render(
       <ShoppingCart
         show={true}
         handleClose={jest.fn()}
@@ -24,6 +26,7 @@ describe('Componente ShoppingCart', () => {
         onCancelarCita={jest.fn()}
       />
     );
-    expect(container.querySelector('.modal')).toBeTruthy();
+
+    expect(document.body.querySelector('.modal')).toBeInTheDocument();
   });
 });

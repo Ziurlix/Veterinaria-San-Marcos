@@ -4,13 +4,26 @@ import ShoppingCart from '../components/ShoppingCart';
 
 describe('Componente ShoppingCart', () => {
   it('debería renderizar correctamente el componente', () => {
-    const { container } = render(<ShoppingCart citas={[]} />);
+    const { container } = render(
+      <ShoppingCart
+        show={true}
+        handleClose={jest.fn()}
+        citas={[]}
+        onCancelarCita={jest.fn()}
+      />
+    );
     expect(container).not.toBeEmptyDOMElement();
   });
 
   it('debería contener una estructura válida', () => {
-    const { container } = render(<ShoppingCart />);
-    expect(container.firstChild).toHaveClass('container'); // Asumiendo que usas <Container> de Bootstrap
+    const { container } = render(
+      <ShoppingCart
+        show={true}
+        handleClose={jest.fn()}
+        citas={[]}
+        onCancelarCita={jest.fn()}
+      />
+    );
+    expect(container.querySelector('.modal')).toBeTruthy();
   });
 });
-
